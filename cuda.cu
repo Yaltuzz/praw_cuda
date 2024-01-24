@@ -19,18 +19,6 @@ void generateRandomNumbers(long* data, long size) {
 
 #define min(a, b) (a < b ? a : b)
 
-
-
-__device__ unsigned int getId(dim3* threads, dim3* blocks) {
-    int x;
-    return threadIdx.x +
-           threadIdx.y * (x  = threads->x) +
-           threadIdx.z * (x *= threads->y) +
-           blockIdx.x  * (x *= threads->z) +
-           blockIdx.y  * (x *= blocks->z) +
-           blockIdx.z  * (x *= blocks->y);
-}
-
 __device__ void gpu_bottomUpMerge(long* source, long* dest, long start, long middle, long end) {
     long i = start;
     long j = middle;
@@ -46,20 +34,17 @@ __device__ void gpu_bottomUpMerge(long* source, long* dest, long start, long mid
 }
 
 __global__ void gpu_mergesort(long* source, long* dest, long size, long width, long slices, dim3* threads, dim3* blocks) {
-    unsigned int idx = getId(threads, blocks);
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+
     long start = width*idx*slices, 
          middle, 
          end;
 
     for (long slice = 0; slice < slices; slice++) {
-        printf("%l",start);
         if (start >= size)
             break;
         middle = min(start + (width >> 1), size);
-        printf("%l",middle);
         end = min(start + width, size);
-        printf("%l",end);
-
         gpu_bottomUpMerge(source, dest, start, middle, end);
         start += width;
     }
@@ -96,11 +81,6 @@ void mergesort(long* data, long size, dim3 threadsPerBlock, dim3 blocksPerGrid) 
 
     for (int width = 2; width < (size << 1); width <<= 1) {
         long slices = size / ((nThreads) * width) + 1;
-
-        std::cout << "mergeSort - width: " << width 
-                    << ", slices: " << slices 
-                    << ", nThreads: " << nThreads << '\n';
-
 
         gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, D_threads, D_blocks);
 
