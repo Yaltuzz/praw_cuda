@@ -33,7 +33,7 @@ __global__ void gpu_mergesort(int* source, int* dest, int size, int width, int s
     for (int slice = 0; slice < slices; slice++) {
         if (start >= size)
             break;
-        middle = min(start + (width >> 1), size);
+        middle = min(start + (width / 2), size);
         end = min(start + width, size);
         gpu_merge(source, dest, start, middle, end);
         start += width;
@@ -69,8 +69,16 @@ void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
         gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, device_threads, device_blocks);
         cudaDeviceSynchronize();
 
-        A = A == device_data ? device_swap : device_data;
-        B = B == device_data ? device_swap : device_data;
+        if (A==device_data){
+            A = device_swap;
+        }else{
+           A = device_data; 
+        }
+         if (B==device_data){
+            B = device_swap;
+        }else{
+           B = device_data; 
+        }
     }
 
     cudaMemcpy(data, A, size * sizeof(int), cudaMemcpyDeviceToHost);
