@@ -3,21 +3,11 @@
 #include <cstdlib>
 #include <ctime>
 
+#define min(a, b) (a < b ? a : b)
 
 void mergesort(int*, int, dim3, dim3);
 __global__ void gpu_mergesort(int*, int*, int, int, int, dim3*, dim3*);
 __device__ void gpu_bottomUpMerge(int*, int*, int, int, int);
-
-
-void generateRandomNumbers(int* data, int size) {
-    std::srand(std::time(NULL)); 
-
-    for (int i = 0; i < size; ++i) {
-        data[i] = std::rand() % 100; 
-    }
-}
-
-#define min(a, b) (a < b ? a : b)
 
 __device__ void gpu_bottomUpMerge(int* source, int* dest, int start, int middle, int end) {
     int i = start;
@@ -53,28 +43,28 @@ __global__ void gpu_mergesort(int* source, int* dest, int size, int width, int s
 
 void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
 
-    int* D_data;
-    int* D_swp;
-    dim3* D_threads;
-    dim3* D_blocks;
+    int* device_data;
+    int* device_swap;
+    dim3* device_threads;
+    dim3* device_blocks;
 
-    cudaMalloc((void**) &D_data, size * sizeof(int));
-    cudaMalloc((void**) &D_swp, size * sizeof(int));
+    cudaMalloc((void**) &device_data, size * sizeof(int));
+    cudaMalloc((void**) &device_swap, size * sizeof(int));
 
     // Copy from our input list into the first array
-    cudaMemcpy(D_data, data, size * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_data, data, size * sizeof(int), cudaMemcpyHostToDevice);
 
     //
     // Copy the thread / block info to the GPU as well
     //
-    cudaMalloc((void**) &D_threads, sizeof(dim3));
-    cudaMalloc((void**) &D_blocks, sizeof(dim3));
+    cudaMalloc((void**) &device_threads, sizeof(dim3));
+    cudaMalloc((void**) &device_blocks, sizeof(dim3));
 
-    cudaMemcpy(D_threads, &threadsPerBlock, sizeof(dim3), cudaMemcpyHostToDevice);
-    cudaMemcpy(D_blocks, &blocksPerGrid, sizeof(dim3), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_threads, &threadsPerBlock, sizeof(dim3), cudaMemcpyHostToDevice);
+    cudaMemcpy(device_blocks, &blocksPerGrid, sizeof(dim3), cudaMemcpyHostToDevice);
 
-    int* A = D_data;
-    int* B = D_swp;
+    int* A = device_data;
+    int* B = device_swap;
 
     int nThreads = threadsPerBlock.x * threadsPerBlock.y * threadsPerBlock.z *
                     blocksPerGrid.x * blocksPerGrid.y * blocksPerGrid.z;
@@ -82,11 +72,11 @@ void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
     for (int width = 2; width < (size << 1); width <<= 1) {
         int slices = size / ((nThreads) * width) + 1;
 
-        gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, D_threads, D_blocks);
-
+        gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, device_threads, device_blocks);
+        cudaDeviceSynchronize();
         // Switch the input / output arrays instead of copying them around
-        A = A == D_data ? D_swp : D_data;
-        B = B == D_data ? D_swp : D_data;
+        A = A == device_data ? device_swap : device_data;
+        B = B == device_data ? device_swap : device_data;
     }
 
     cudaMemcpy(data, A, size * sizeof(int), cudaMemcpyDeviceToHost);
@@ -98,16 +88,15 @@ int main(int argc, char** argv) {
     dim3 blocksPerGrid;
 
     threadsPerBlock.x = 128;
-    threadsPerBlock.y = 1;
-    threadsPerBlock.z = 1;
-
     blocksPerGrid.x = 64;
-    blocksPerGrid.y = 1;
-    blocksPerGrid.z = 1;
 
     int size = 1000;
     int* data = new int[size];
-    generateRandomNumbers(data, size);
+    std::srand(std::time(NULL)); 
+
+    for (int i = 0; i < size; ++i) {
+        data[i] = std::rand() % 150; 
+    }
 
     mergesort(data, size, threadsPerBlock, blocksPerGrid);
 
