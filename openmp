@@ -1,0 +1,103 @@
+#include <omp.h>
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#define NUMBERS_LEFT 1000
+
+void merge(int array[], int beginningIndex, int midIndex, int endingIndex)
+{
+
+    int numberOfItemsLeftArray = midIndex - beginningIndex + 1;
+    int numberOfItemsRightArray = endingIndex - midIndex;
+
+    int *leftTab = (int *)malloc(numberOfItemsLeftArray * sizeof(int));
+    int *rightTab = (int *)malloc(numberOfItemsRightArray * sizeof(int));
+
+    for (int i = 0; i < numberOfItemsLeftArray; i++)
+    {
+        leftTab[i] = array[i + beginningIndex];
+    }
+    for (int i = 0; i < numberOfItemsRightArray; i++)
+    {
+        rightTab[i] = array[i + midIndex + 1];
+    }
+
+    int leftTabIndex = 0;
+    int rightTabIndex = 0;
+    int mainTabIndex = beginningIndex;
+
+    while (leftTabIndex < numberOfItemsLeftArray && rightTabIndex < numberOfItemsRightArray)
+    {
+        if (leftTab[leftTabIndex] <= rightTab[rightTabIndex])
+        {
+            array[mainTabIndex] = leftTab[leftTabIndex];
+            leftTabIndex++;
+            mainTabIndex++;
+        }
+        else
+        {
+            array[mainTabIndex] = rightTab[rightTabIndex];
+            rightTabIndex++;
+            mainTabIndex++;
+        }
+    }
+
+    while (leftTabIndex < numberOfItemsLeftArray)
+    {
+        array[mainTabIndex] = leftTab[leftTabIndex];
+        leftTabIndex++;
+        mainTabIndex++;
+    }
+
+    while (rightTabIndex < numberOfItemsRightArray)
+    {
+        array[mainTabIndex] = rightTab[rightTabIndex];
+        rightTabIndex++;
+        mainTabIndex++;
+    }
+
+    free(rightTab);
+    free(leftTab);
+}
+
+void mergeSort(int array[], int beginningIndex, int endingIndex)
+{
+
+    if (beginningIndex == endingIndex)
+    {
+        return;
+    }
+    int midIndex = (beginningIndex + endingIndex) / 2;
+    int n = midIndex - beginningIndex;
+    #pragma omp task if (n > NUMBERS_LEFT)
+    mergeSort(array, beginningIndex, midIndex);
+
+    #pragma omp task if (n > NUMBERS_LEFT)
+    mergeSort(array, midIndex + 1, endingIndex);
+    #pragma omp taskwait
+    merge(array, beginningIndex, midIndex, endingIndex);
+}
+
+int main()  
+{
+    omp_set_num_threads(4);
+    srand(time(NULL));
+    int arrSize = 10000000;
+    int *arr = (int *)malloc(sizeof(int) * 10000000);
+    for (int i = 0; i < arrSize; i++)
+    {
+        arr[i] = rand() % 150;
+    }
+    double itime, ftime, exec_time;
+    itime = omp_get_wtime();
+
+    #pragma omp parallel
+    {
+    #pragma omp single
+        mergeSort(arr, 0, arrSize - 1);
+    }
+
+    ftime = omp_get_wtime();
+    exec_time = ftime - itime;
+    printf("\n\nTime taken is %f", exec_time);
+}
