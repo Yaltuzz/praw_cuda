@@ -88,6 +88,7 @@ int main(int argc, char** argv) {
 
     dim3 threadsPerBlock;
     dim3 blocksPerGrid;
+    struct timeval t1, t2;
 
     threadsPerBlock.x = 128;
     blocksPerGrid.x = 64;
@@ -99,8 +100,13 @@ int main(int argc, char** argv) {
     for (int i = 0; i < size; ++i) {
         data[i] = std::rand() % 150; 
     }
+    gettimeofday(&t1, 0);
 
     mergesort(data, size, threadsPerBlock, blocksPerGrid);
+    gettimeofday(&t2, 0);
+double time = (1000000.0*(t2.tv_sec-t1.tv_sec) + t2.tv_usec-t1.tv_usec)/1000.0;
+
+printf("Time:  %3.1f ms \n", time);
 
     bool is_sorted = true;
     for (int i = 0; i < size - 1; i++) {
