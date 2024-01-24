@@ -9,6 +9,16 @@ void mergesort(long*, long, dim3, dim3);
 __global__ void gpu_mergesort(long*, long*, long, long, long, dim3*, dim3*);
 __device__ void gpu_merge(long*, long*, long, long, long);
 
+__device__ unsigned int getId(dim3* threads, dim3* blocks) {
+    int x;
+    return threadIdx.x +
+           threadIdx.y * (x  = threads->x) +
+           threadIdx.z * (x *= threads->y) +
+           blockIdx.x  * (x *= threads->z) +
+           blockIdx.y  * (x *= blocks->z) +
+           blockIdx.z  * (x *= blocks->y);
+}
+
 __device__ void gpu_merge(int* source, int* dest, int start, int middle, int end) {
     int i = start;
     int j = middle;
@@ -24,7 +34,7 @@ __device__ void gpu_merge(int* source, int* dest, int start, int middle, int end
 }
 
 __global__ void gpu_mergesort(int* source, int* dest, int size, int width, int slices, dim3* threads, dim3* blocks) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    int idx = getId(threads,blocks);
     int start = width*idx*slices, 
          middle, 
          end;
