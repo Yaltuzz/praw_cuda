@@ -4,25 +4,25 @@
 #include <ctime>
 
 
-void mergesort(long*, long, dim3, dim3);
-__global__ void gpu_mergesort(long*, long*, long, long, long, dim3*, dim3*);
-__device__ void gpu_bottomUpMerge(long*, long*, long, long, long);
+void mergesort(int*, int, dim3, dim3);
+__global__ void gpu_mergesort(int*, int*, int, int, int, dim3*, dim3*);
+__device__ void gpu_bottomUpMerge(int*, int*, int, int, int);
 
 
-void generateRandomNumbers(long* data, long size) {
+void generateRandomNumbers(int* data, int size) {
     std::srand(std::time(NULL)); 
 
-    for (long i = 0; i < size; ++i) {
+    for (int i = 0; i < size; ++i) {
         data[i] = std::rand() % 100; 
     }
 }
 
 #define min(a, b) (a < b ? a : b)
 
-__device__ void gpu_bottomUpMerge(long* source, long* dest, long start, long middle, long end) {
-    long i = start;
-    long j = middle;
-    for (long k = start; k < end; k++) {
+__device__ void gpu_bottomUpMerge(int* source, int* dest, int start, int middle, int end) {
+    int i = start;
+    int j = middle;
+    for (int k = start; k < end; k++) {
         if (i < middle && (j >= end || source[i] < source[j])) {
             dest[k] = source[i];
             i++;
@@ -33,14 +33,14 @@ __device__ void gpu_bottomUpMerge(long* source, long* dest, long start, long mid
     }
 }
 
-__global__ void gpu_mergesort(long* source, long* dest, long size, long width, long slices, dim3* threads, dim3* blocks) {
+__global__ void gpu_mergesort(int* source, int* dest, int size, int width, int slices, dim3* threads, dim3* blocks) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
 
-    long start = width*idx*slices, 
+    int start = width*idx*slices, 
          middle, 
          end;
 
-    for (long slice = 0; slice < slices; slice++) {
+    for (int slice = 0; slice < slices; slice++) {
         if (start >= size)
             break;
         middle = min(start + (width >> 1), size);
@@ -51,18 +51,18 @@ __global__ void gpu_mergesort(long* source, long* dest, long size, long width, l
 }
 
 
-void mergesort(long* data, long size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
+void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
 
-    long* D_data;
-    long* D_swp;
+    int* D_data;
+    int* D_swp;
     dim3* D_threads;
     dim3* D_blocks;
 
-    cudaMalloc((void**) &D_data, size * sizeof(long));
-    cudaMalloc((void**) &D_swp, size * sizeof(long));
+    cudaMalloc((void**) &D_data, size * sizeof(int));
+    cudaMalloc((void**) &D_swp, size * sizeof(int));
 
     // Copy from our input list into the first array
-    cudaMemcpy(D_data, data, size * sizeof(long), cudaMemcpyHostToDevice);
+    cudaMemcpy(D_data, data, size * sizeof(int), cudaMemcpyHostToDevice);
 
     //
     // Copy the thread / block info to the GPU as well
@@ -73,14 +73,14 @@ void mergesort(long* data, long size, dim3 threadsPerBlock, dim3 blocksPerGrid) 
     cudaMemcpy(D_threads, &threadsPerBlock, sizeof(dim3), cudaMemcpyHostToDevice);
     cudaMemcpy(D_blocks, &blocksPerGrid, sizeof(dim3), cudaMemcpyHostToDevice);
 
-    long* A = D_data;
-    long* B = D_swp;
+    int* A = D_data;
+    int* B = D_swp;
 
-    long nThreads = threadsPerBlock.x * threadsPerBlock.y * threadsPerBlock.z *
+    int nThreads = threadsPerBlock.x * threadsPerBlock.y * threadsPerBlock.z *
                     blocksPerGrid.x * blocksPerGrid.y * blocksPerGrid.z;
 
     for (int width = 2; width < (size << 1); width <<= 1) {
-        long slices = size / ((nThreads) * width) + 1;
+        int slices = size / ((nThreads) * width) + 1;
 
         gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, D_threads, D_blocks);
 
@@ -89,7 +89,7 @@ void mergesort(long* data, long size, dim3 threadsPerBlock, dim3 blocksPerGrid) 
         B = B == D_data ? D_swp : D_data;
     }
 
-    cudaMemcpy(data, A, size * sizeof(long), cudaMemcpyDeviceToHost);
+    cudaMemcpy(data, A, size * sizeof(int), cudaMemcpyDeviceToHost);
 }
 
 int main(int argc, char** argv) {
@@ -105,8 +105,8 @@ int main(int argc, char** argv) {
     blocksPerGrid.y = 1;
     blocksPerGrid.z = 1;
 
-    long size = 1000;
-    long* data = new long[size];
+    int size = 1000;
+    int* data = new int[size];
     generateRandomNumbers(data, size);
 
     mergesort(data, size, threadsPerBlock, blocksPerGrid);
