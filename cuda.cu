@@ -61,7 +61,7 @@ void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
     int* A = device_data;
     int* B = device_swap;
 
-    int nThreads = threadsPerBlock.x * blocksPerGrid.x 
+    int nThreads = threadsPerBlock.x * blocksPerGrid.x;
 
     for (int width = 2; width < (size << 1); width <<= 1) {
         int slices = size / ((nThreads) * width) + 1;
@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     int* data = new int[size];
     std::srand(std::time(NULL)); 
 
-    for (int i = 0; i < size; i++i) {
+    for (int i = 0; i < size; i++) {
         data[i] = std::rand() % 150; 
     }
 
