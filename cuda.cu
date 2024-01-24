@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     threadsPerBlock.x = 128;
     blocksPerGrid.x = 64;
 
-    int size = 10000000;
+    int size = 1000;
     int* data = new int[size];
     std::srand(std::time(NULL)); 
 
