@@ -66,7 +66,7 @@ void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
     for (int width = 2; width < (size << 1); width <<= 1) {
         int slices = size / ((nThreads) * width) + 1;
 
-        gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, D_threads, D_blocks);
+        gpu_mergesort<<<blocksPerGrid, threadsPerBlock>>>(A, B, size, width, slices, device_threads, device_blocks);
 
         if (A == device_data){
             A = device_swap;
@@ -77,7 +77,7 @@ void mergesort(int* data, int size, dim3 threadsPerBlock, dim3 blocksPerGrid) {
             B = device_swap;
         }
         else{
-            B = device_data
+            B = device_data;
         }
     }
 
